@@ -5,8 +5,9 @@
 #include <stdint.h>
 #include <time.h>
 
-#define ROWS 4
-#define COLS 4
+#define ROWS 5
+#define COLS 7
+#define CONSECUTIVE 4
 #define EMPTY '.'
 #define HUMAN 'X'
 #define COMPUTER 'O'
@@ -66,10 +67,27 @@ int check_winner(const Board *b, char player) {
     for (int i = 0; i < ROWS; i++) {
         for (int j = 0; j < COLS; j++) {
             if (b->cells[i][j] == player) {
-                if (i <= 1) if (b->cells[i+1][j] == player && b->cells[i+2][j] == player) return 1;
-                if (j <= 1) if (b->cells[i][j+1] == player && b->cells[i][j+2] == player) return 1;
-                if (i <= 1 && j >= 2) if (b->cells[i+1][j-1] == player && b->cells[i+2][j-2] == player) return 1;
-                if (i <= 1 && j <= 1) if (b->cells[i+1][j+1] == player && b->cells[i+2][j+2] == player) return 1;
+                int flag = 0;
+                if (i <= ROWS - CONSECUTIVE) {
+                    flag = 1;
+                    for(int k = 1; k < CONSECUTIVE; k++) if(b->cells[i + k][j] != player) {flag = 0; break;}
+                    if(flag) return 1;
+                }
+                if (j <= COLS - CONSECUTIVE) {
+                    flag = 1;
+                    for(int k = 1; k < CONSECUTIVE; k++) if(b->cells[i][j + k] != player) {flag = 0; break;}
+                    if(flag) return 1;
+                }
+                if (i <= ROWS - CONSECUTIVE && j >= CONSECUTIVE - 1) {
+                    flag = 1;
+                    for(int k = 1; k < CONSECUTIVE; k++) if(b->cells[i + k][j - k] != player) {flag = 0; break;}
+                    if(flag) return 1;
+                }
+                if (j <= COLS - CONSECUTIVE && i >= CONSECUTIVE - 1) {
+                    flag = 1;
+                    for (int k = 1; k < CONSECUTIVE; k++) if (b->cells[i - k][j + k] != player) {flag = 0; break;}
+                    if(flag) return 1;
+                }
             }
         }
     }
