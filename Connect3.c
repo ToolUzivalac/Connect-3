@@ -406,6 +406,63 @@ int evaluate_node(const TreeNode *node) {
     }
 }
 
+int maxi(int a, int b) {
+    return a > b ? a : b;
+}
+
+int mini(int a, int b){
+    return a < b ? a : b;
+}
+
+TreeNode *alphabeta(const Board *start_board, char start_player, int h, int level, NodeArray *arr, int alpha, int beta){
+    if(h == 0 || game_result(start_board) != RESULT_NONE){
+        TreeNode *new_node = create_node(start_board, start_player, -1, level);
+        new_node->value = evaluate_node(new_node);
+        add_node(arr, new_node);
+        return new_node;
+    }
+
+    TreeNode *new_node = create_node(start_board, start_player, -1, level);
+    add_node(arr, new_node);
+    if(start_player == COMPUTER){
+        int value = INT_MIN;
+        for(int i = 0; i < COLS; i++){
+            if (!is_valid_move(start_board, i)) continue;
+            Board new_board;
+            copy_board(&new_board, start_board);
+            play_move(&new_board, i, start_player);
+
+            TreeNode *child = alphabeta(&new_board, other_player(start_player), h-1, level+1, arr, alpha, beta);
+            value = maxi(value, child->value);
+            child->move_column = i;
+            new_node->children[new_node->child_count] = child;
+            new_node->child_count++;
+            if(value >= beta) break;
+            alpha = maxi(alpha, value);
+        }
+        new_node->value = value;
+        return new_node;
+    }else{
+        int value = INT_MAX;
+        for(int i = 0; i < COLS; i++){
+            if (!is_valid_move(start_board, i)) continue;
+            Board new_board;
+            copy_board(&new_board, start_board);
+            play_move(&new_board, i, start_player);
+
+            TreeNode *child = alphabeta(&new_board, other_player(start_player), h-1, level+1, arr, alpha, beta);
+            value = mini(value, child->value);
+            child->move_column = i;
+            new_node->children[new_node->child_count] = child;
+            new_node->child_count++;
+            if(value <= alpha) break;
+            beta = mini(beta, value);
+        }
+        new_node->value = value;
+        return new_node;
+    }
+}
+
 TreeNode *build_decision_tree(const Board *start_board, char start_player, int h, NodeArray *arr) {
     if (arr == NULL || start_board == NULL || h < 0) return NULL;
     Queue q;
@@ -414,6 +471,7 @@ TreeNode *build_decision_tree(const Board *start_board, char start_player, int h
     if (root == NULL) return NULL;
     if (!enqueue(&q, root)) return NULL;
     if (!add_node(arr, root)) return NULL;
+
     while (!is_queue_empty(&q)) {
         TreeNode *node = dequeue(&q);
 
@@ -607,7 +665,7 @@ void simulate_game(const Board *start_board, TreeNode *root) {
 
 void print_menu() {
     printf("1. Nova prazna tabla\n2. Ucitaj tablu sa standardnog ulaza\n3. Ucitaj tablu iz fajla\n4. Ispisi trenutnu tablu\n5. Formiraj stablo odlucivanja\n"
-           "6. Pokreni minimax\n7. Ispisi stablo preorder\n8. Simuliraj igru\n9. Obrisi stablo\n0. Kraj\nUnesi izbor: ");
+           "6. Pokreni minimax\n7. Ispisi stablo preorder\n8. Simuliraj igru\n9. Obrisi stablo\n10. Pokreni alfabet\n0. Kraj\nUnesi izbor: ");
 }
 
 int main() {
@@ -620,6 +678,7 @@ int main() {
     int board_ready = 0;
     int tree_built = 0;
     int minimax_done = 0;
+    int alfabet_done = 0;
     init_board(&current_board);
     init_node_array(&arr);
     int h;
@@ -627,7 +686,7 @@ int main() {
 
     while (1) {
         print_menu();
-        while (scanf("%d", &choice) != 1 || choice < 0 || choice > 9) {
+        while (scanf("%d", &choice) != 1 || choice < 0 || choice > 10) {
             printf("Nepravilan ulaz\nUnesi izbor: ");
             int a;
             while ((a = getchar()) != '\n' && a != EOF);
@@ -722,7 +781,7 @@ int main() {
                 else printf("Nije napravljeno stablo!\n");
                 break;
             case 8:
-                if (board_ready && tree_built && minimax_done) {
+                if (board_ready && (tree_built && minimax_done || alfabet_done)) {
                     simulate_game(&current_board, root);
                 }else {
                     printf("Nije napravljena tabla ili stablo ili minimaks!\n");
@@ -735,6 +794,27 @@ int main() {
                 root = NULL;
                 tree_built = 0;
                 minimax_done = 0;
+                break;
+            case 10:
+                if (board_ready) {
+                    free_tree(root);
+                    root = NULL;
+                    free_node_array(&arr);
+                    init_node_array(&arr);
+                    tree_built = 0;
+                    minimax_done = 0;
+                    current_player = determine_next_player(&current_board);
+
+                    printf("Unesi visinu h: ");
+                    if (scanf("%d", &h) != 1 || h < 0) {
+                        printf("Nepravilan ulaz!\n");
+                        break;
+                    }
+                    root = alphabeta(&current_board, current_player, h, 0, &arr, INT_MIN, INT_MAX);
+                    alfabet_done = 1;
+                }else {
+                    printf("Nisu napravljeni tabla ili stablo!\n");
+                }
                 break;
             case 0:
                 free_tree(root);
