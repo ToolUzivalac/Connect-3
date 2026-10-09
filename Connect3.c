@@ -83,9 +83,9 @@ int check_winner(const Board *b, char player) {
                     for(int k = 1; k < CONSECUTIVE; k++) if(b->cells[i + k][j - k] != player) {flag = 0; break;}
                     if(flag) return 1;
                 }
-                if (j <= COLS - CONSECUTIVE && i >= CONSECUTIVE - 1) {
+                if (j <= COLS - CONSECUTIVE && i <= ROWS - CONSECUTIVE) {
                     flag = 1;
-                    for (int k = 1; k < CONSECUTIVE; k++) if (b->cells[i - k][j + k] != player) {flag = 0; break;}
+                    for (int k = 1; k < CONSECUTIVE; k++) if (b->cells[i + k][j + k] != player) {flag = 0; break;}
                     if(flag) return 1;
                 }
             }
@@ -605,12 +605,14 @@ TreeNode *find_child_by_move(TreeNode *node, int col) {
 
 //SIMULACIJA IGRE
 
-void simulate_game(const Board *start_board, TreeNode *root) {
-    if (root == NULL || start_board == NULL) return;
+void simulate_game(const Board *start_board, int h) {
+    if (start_board == NULL) return;
     Board board;
+    NodeArray arr;
+    init_node_array(&arr);
+    TreeNode *root = NULL;
     copy_board(&board, start_board);
     char player = determine_next_player(&board);
-    TreeNode *current_node = root;
     int c;
 
     while (game_result(&board) == RESULT_NONE) {
@@ -622,25 +624,23 @@ void simulate_game(const Board *start_board, TreeNode *root) {
                 int a;
                 while ((a = getchar()) != '\n' && a != EOF);
             }
-            TreeNode *tmp = find_child_by_move(current_node, c);
-            if (tmp == NULL) {
-                play_move(&board, c, player);
-                current_node = NULL;
-            }else {
-                current_node = tmp;
-                copy_board(&board, &current_node->board);
-            }
+            play_move(&board, c, player);
         }else if (player == COMPUTER) {
-            TreeNode *tmp = choose_best_child(current_node);
+            free_tree(root);
+            root = NULL;
+            free_node_array(&arr);
+            init_node_array(&arr);
+
+            root = alphabeta(&board, player, h, 0, &arr, INT_MIN, INT_MAX);
+
+            TreeNode *tmp = choose_best_child(root);
             if (tmp == NULL) {
                 c = random_valid_column(&board);
                 if (c == -1) break;
                 play_move(&board, c, player);
-                current_node = NULL;
             }else {
-                current_node = tmp;
-                copy_board(&board, &current_node->board);
-                c = current_node->move_column;
+                copy_board(&board, &tmp->board);
+                c = tmp->move_column;
             }
             printf("Kompjuter igra kolonu: %d\n", c);
         }else {
@@ -661,6 +661,9 @@ void simulate_game(const Board *start_board, TreeNode *root) {
     }else {
         printf("Neispravna tabla\n");
     }
+
+    free_tree(root);
+    free_node_array(&arr);
 }
 
 void print_menu() {
@@ -781,10 +784,15 @@ int main() {
                 else printf("Nije napravljeno stablo!\n");
                 break;
             case 8:
-                if (board_ready && (tree_built && minimax_done || alfabet_done)) {
-                    simulate_game(&current_board, root);
+                if (board_ready) {
+                    printf("Unesi visinu h: ");
+                    if (scanf("%d", &h) != 1 || h < 0) {
+                        printf("Nepravilan ulaz!\n");
+                        break;
+                    }
+                    simulate_game(&current_board, h);
                 }else {
-                    printf("Nije napravljena tabla ili stablo ili minimaks!\n");
+                    printf("Nije napravljena tabla!\n");
                 }
                 break;
             case 9:
